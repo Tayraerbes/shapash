@@ -12,12 +12,11 @@ export function SmartUpload() {
   const [metadata, setMetadata] = useState<DocumentMetadata>({
     title: '',
     author: '',
-    doc_type: '',
-    genre: '',
-    topic: '',
-    difficulty: '',
+    summary: '',
     tags: '',
-    description: ''
+    tone: '',
+    audience: '',
+    category: ''
   })
   
   const [uploadMethod, setUploadMethod] = useState<{
@@ -82,20 +81,46 @@ export function SmartUpload() {
   }
 
   const generateMetadata = async () => {
-    if (!metadata.title.trim()) {
-      alert('Please enter a title first')
+    if (!files || files.length === 0) {
+      alert('Please upload PDF files first')
       return
     }
 
     try {
-      const response = await fetch('/api/generate-document-metadata', {
+      // Extract PDF content first
+      const file = files[0] // Use first file for metadata generation
+      const formData = new FormData()
+      formData.append('file', file)
+
+      console.log('📄 Extracting PDF content for metadata generation...')
+      const extractResponse = await fetch('/api/extract-pdf-content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: metadata.title.trim() })
+        body: formData
       })
 
-      if (response.ok) {
-        const data = await response.json()
+      if (!extractResponse.ok) {
+        throw new Error('Failed to extract PDF content')
+      }
+
+      const { content } = await extractResponse.json()
+      
+      if (!content || content.trim().length === 0) {
+        throw new Error('No text content found in PDF')
+      }
+
+      // Generate metadata from actual content
+      console.log('🤖 Generating metadata from PDF transcript...')
+      const metadataResponse = await fetch('/api/generate-wedding-podcast-metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          fullTranscript: content,
+          filename: file.name 
+        })
+      })
+
+      if (metadataResponse.ok) {
+        const data = await metadataResponse.json()
         setMetadata(prev => ({
           ...prev,
           ...data.metadata
@@ -143,12 +168,11 @@ export function SmartUpload() {
           setMetadata({
             title: '',
             author: '',
-            doc_type: '',
-            genre: '',
-            topic: '',
-            difficulty: '',
+            summary: '',
             tags: '',
-            description: ''
+            tone: '',
+            audience: '',
+            category: ''
           })
           setUploadResult(null)
         }, 5000)
@@ -167,12 +191,11 @@ export function SmartUpload() {
     setMetadata({
       title: '',
       author: '',
-      doc_type: '',
-      genre: '',
-      topic: '',
-      difficulty: '',
+      summary: '',
       tags: '',
-      description: ''
+      tone: '',
+      audience: '',
+      category: ''
     })
     setUploadResult(null)
     setError('')
@@ -306,10 +329,10 @@ export function SmartUpload() {
                 <button
                   type="button"
                   onClick={generateMetadata}
-                  disabled={!metadata.title.trim()}
+                  disabled={!files || files.length === 0}
                   className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  🧠 Generate
+                  🧠 Generate from PDF
                 </button>
               </div>
             </div>
@@ -326,50 +349,44 @@ export function SmartUpload() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
               <input
                 type="text"
-                value={metadata.doc_type}
-                onChange={(e) => handleMetadataChange('doc_type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., Book, Article, Report"
+                value={metadata.category}
+                onChange={(e) => handleMetadataChange('category', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
+                placeholder="e.g., Wedding Planning, Venue Selection"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Genre</label>
-              <input
-                type="text"
-                value={metadata.genre}
-                onChange={(e) => handleMetadataChange('genre', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., Philosophy, Science"
-              />
-            </div>
-            
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
-              <input
-                type="text"
-                value={metadata.topic}
-                onChange={(e) => handleMetadataChange('topic', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., Ethics, Quantum Physics"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tone</label>
               <select
-                value={metadata.difficulty}
-                onChange={(e) => handleMetadataChange('difficulty', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={metadata.tone}
+                onChange={(e) => handleMetadataChange('tone', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
               >
-                <option value="">Select difficulty</option>
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Advanced">Advanced</option>
-                <option value="Expert">Expert</option>
+                <option value="">Select tone</option>
+                <option value="Professional">Professional</option>
+                <option value="Casual">Casual</option>
+                <option value="Inspirational">Inspirational</option>
+                <option value="Educational">Educational</option>
+                <option value="Conversational">Conversational</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Audience</label>
+              <select
+                value={metadata.audience}
+                onChange={(e) => handleMetadataChange('audience', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
+              >
+                <option value="">Select audience</option>
+                <option value="Engaged Couples">Engaged Couples</option>
+                <option value="Wedding Planners">Wedding Planners</option>
+                <option value="Vendors">Vendors</option>
+                <option value="General">General</option>
               </select>
             </div>
             
@@ -379,19 +396,19 @@ export function SmartUpload() {
                 type="text"
                 value={metadata.tags}
                 onChange={(e) => handleMetadataChange('tags', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Comma-separated tags"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
+                placeholder="e.g., wedding planning, venue, budget, timeline"
               />
             </div>
             
             <div className="md:col-span-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
               <textarea
-                value={metadata.description}
-                onChange={(e) => handleMetadataChange('description', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={metadata.summary}
+                onChange={(e) => handleMetadataChange('summary', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
                 rows={3}
-                placeholder="Brief description of the document content"
+                placeholder="Brief summary of the main content and key points"
               />
             </div>
           </div>

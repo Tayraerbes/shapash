@@ -94,14 +94,18 @@ export interface VectorStoreInfo {
 export interface DocumentMetadata {
   title: string
   author: string
-  doc_type: string
-  genre: string
+  summary: string
+  tags: string
+  tone: string
+  audience: string
+  category: string
+  // Legacy fields for backward compatibility
+  doc_type?: string
+  genre?: string
   topic?: string
   difficulty?: string
-  tags?: string
   source_type?: string
   description?: string
-  summary?: string
   youtube_channel?: string
   video_id?: string
 }
