@@ -4,13 +4,13 @@ import { generateEmbedding } from '@/lib/openai'
 import Papa from 'papaparse'
 
 interface CSVVendorRow {
-  email?: string
-  county?: string
-  website?: string
-  category?: string
-  supplier?: string
-  phone?: string
-  address?: string
+  'supplier name'?: string
+  'status'?: string
+  'category'?: string
+  'rmw url'?: string
+  'website'?: string
+  'contact mail'?: string
+  'counties'?: string
   [key: string]: string | undefined // Allow for additional columns
 }
 
@@ -92,19 +92,29 @@ export async function POST(request: NextRequest) {
           const batchPromises = batchVendors.map(async (vendor, batchIndex) => {
             const vendorIndex = i + batchIndex
             try {
-              // Skip rows with no supplier or category
-              if (!vendor.supplier || !vendor.category) {
-                console.warn(`⚠️ Skipping vendor ${vendorIndex}: missing supplier or category`)
+              // Map CSV headers to our field names
+              const supplierName = vendor['supplier name']
+              const category = vendor['category']
+              const counties = vendor['counties']
+              const email = vendor['contact mail']
+              const website = vendor['website']
+              const status = vendor['status']
+              
+              // Skip rows with no supplier name or category
+              if (!supplierName || !category) {
+                console.warn(`⚠️ Skipping vendor ${vendorIndex}: missing supplier name or category`)
+                console.warn(`⚠️ Row data:`, vendor)
                 return false
               }
 
               // Create context-enhanced text for embedding
               const contextEnhancedText = `
-Wedding Vendor: ${vendor.supplier}
-Category: ${vendor.category}
-Location: ${vendor.county || 'Available'}
-Email: ${vendor.email || 'Available on request'}
-Website: ${vendor.website || 'Contact for details'}
+Wedding Vendor: ${supplierName}
+Category: ${category}
+Location: ${counties || 'Available'}
+Email: ${email || 'Available on request'}
+Website: ${website || 'Contact for details'}
+Status: ${status || 'Active'}
               `.trim()
               
               const embedding = await generateEmbedding(contextEnhancedText)
@@ -113,11 +123,11 @@ Website: ${vendor.website || 'Contact for details'}
               const { error: vendorError } = await supabase
                 .from('wedding_vendors')
                 .insert({
-                  supplier: vendor.supplier,
-                  category: vendor.category,
-                  county: vendor.county || null,
-                  email: vendor.email || null,
-                  website: vendor.website || null,
+                  supplier: supplierName,
+                  category: category,
+                  county: counties || null,
+                  email: email || null,
+                  website: website || null,
                   embedding: embedding,
                   source_file: file.name,
                   row_index: vendorIndex
@@ -134,7 +144,7 @@ Website: ${vendor.website || 'Contact for details'}
                 return false
               }
 
-              console.log(`✅ Stored vendor: ${vendor.supplier} (${vendor.category} in ${vendor.county})`)
+              console.log(`✅ Stored vendor: ${supplierName} (${category} in ${counties})`)
               return true
             } catch (error) {
               console.error(`❌ Error processing vendor ${vendorIndex}:`, error)
