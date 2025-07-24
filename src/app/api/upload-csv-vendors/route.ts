@@ -125,6 +125,12 @@ Website: ${vendor.website || 'Contact for details'}
 
               if (vendorError) {
                 console.error(`❌ Error storing vendor ${vendorIndex}:`, vendorError)
+                console.error(`❌ Error details:`, {
+                  code: vendorError.code,
+                  message: vendorError.message,
+                  details: vendorError.details,
+                  hint: vendorError.hint
+                })
                 return false
               }
 
@@ -141,6 +147,11 @@ Website: ${vendor.website || 'Contact for details'}
         }
 
         console.log(`✅ Successfully stored ${fileVendorsStored} vendors from ${file.name}`)
+        
+        if (fileVendorsStored === 0) {
+          console.warn(`⚠️ No vendors were stored from ${file.name}. Check CSV format and data.`)
+        }
+        
         totalVendors += fileVendorsStored
         totalProcessed += vendors.length
 
@@ -161,7 +172,13 @@ Website: ${vendor.website || 'Contact for details'}
       details: {
         totalProcessed,
         totalStored: totalVendors,
-        filesProcessed: csvFiles.length
+        filesProcessed: csvFiles.length,
+        debug: {
+          csvFilesFound: csvFiles.length,
+          totalRowsProcessed: totalProcessed,
+          vendorsSuccessfullyStored: totalVendors,
+          successRate: totalProcessed > 0 ? `${Math.round((totalVendors / totalProcessed) * 100)}%` : '0%'
+        }
       }
     })
 
