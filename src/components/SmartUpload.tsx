@@ -4,8 +4,19 @@ import { useState, useCallback, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { Upload, FileText, X, Eye, CheckCircle, AlertCircle, Loader2, Info, Zap, Cpu } from 'lucide-react'
 import { DocumentMetadata } from '@/types'
-import { smartUploadPDFsV2, getUploadMethodV2, UploadResult } from '@/lib/smart-upload-handler-v2'
 import { formatFileSize } from '@/lib/utils'
+
+// Define upload result type locally since we're not using the smart upload handler anymore
+interface UploadResult {
+  success: boolean
+  documentsCount: number
+  chunksCount: number
+  uploadMethod: 'direct-upload' | 'storage-upload'
+  errorCount?: number
+  error?: string
+  documentId?: string
+  processingStats?: any
+}
 
 export function SmartUpload() {
   const [files, setFiles] = useState<File[]>([])
@@ -38,8 +49,12 @@ export function SmartUpload() {
   // Update upload method when files change
   useEffect(() => {
     if (files.length > 0) {
-      const method = getUploadMethodV2(files)
-      setUploadMethod(method)
+      const totalSizeMB = files.reduce((total, file) => total + file.size, 0) / (1024 * 1024)
+      setUploadMethod({
+        method: 'direct-upload',
+        reason: 'Using wedding podcast API for direct processing',
+        totalSizeMB
+      })
     } else {
       setUploadMethod(null)
     }
@@ -140,43 +155,62 @@ export function SmartUpload() {
       return
     }
 
-    if (!metadata.title.trim()) {
-      alert('Please enter a title')
-      return
-    }
-
     setIsUploading(true)
     setError('')
     setUploadResult(null)
 
     try {
-      const result = await smartUploadPDFsV2(files, metadata, {
-        chunkSize,
-        chunkOverlap,
-        splitterType,
-        onProgress: (stage: string, progress: number, message: string) => {
-          setUploadProgress({ stage, progress, message })
-        }
+      // Use the dedicated wedding podcast upload API
+      const formData = new FormData()
+      
+      // Add all files
+      files.forEach(file => {
+        formData.append('files', file)
+      })
+      
+      // Add processing options
+      formData.append('splitterType', splitterType)
+      formData.append('chunkSize', chunkSize.toString())
+      formData.append('chunkOverlap', chunkOverlap.toString())
+      
+      setUploadProgress({ stage: 'uploading', progress: 10, message: 'Starting wedding podcast upload...' })
+      
+      const response = await fetch('/api/upload-wedding-podcasts', {
+        method: 'POST',
+        body: formData
       })
 
-      setUploadResult(result)
-      
-      if (result.success) {
-        // Reset form after successful upload
-        setTimeout(() => {
-          setFiles([])
-          setMetadata({
-            title: '',
-            author: '',
-            summary: '',
-            tags: '',
-            tone: '',
-            audience: '',
-            category: ''
-          })
-          setUploadResult(null)
-        }, 5000)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Upload failed')
       }
+
+      const result = await response.json()
+      
+      setUploadProgress({ stage: 'complete', progress: 100, message: 'Upload completed successfully!' })
+      
+      setUploadResult({
+        success: true,
+        documentsCount: result.documentsCount || files.length,
+        chunksCount: result.totalChunks || 0,
+        uploadMethod: 'direct-upload' as const,
+        documentId: result.documentId
+      })
+      
+      // Reset form after successful upload
+      setTimeout(() => {
+        setFiles([])
+        setMetadata({
+          title: '',
+          author: '',
+          summary: '',
+          tags: '',
+          tone: '',
+          audience: '',
+          category: ''
+        })
+        setUploadResult(null)
+      }, 5000)
       
     } catch (error) {
       console.error('Upload error:', error)
@@ -204,16 +238,16 @@ export function SmartUpload() {
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">
-        📄 Smart PDF Upload
+        🎙️ Wedding Podcast Upload
       </h2>
       
-      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center gap-2 text-blue-700 text-sm">
+      <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+        <div className="flex items-center gap-2 text-rose-700 text-sm">
           <Info className="w-4 h-4" />
-          <span className="font-medium">Automatic File Size Detection</span>
+          <span className="font-medium">AI-Powered Metadata Generation</span>
         </div>
-        <p className="text-blue-600 text-sm mt-1">
-          Files ≤4MB use direct upload. Files {'>'}4MB use storage upload then server processing with pdf-parse.
+        <p className="text-rose-600 text-sm mt-1">
+          Metadata will be automatically generated from the full transcript content using AI analysis.
         </p>
       </div>
 
@@ -234,10 +268,10 @@ export function SmartUpload() {
           ) : (
             <div>
               <p className="text-gray-600 mb-2">
-                Drag & drop PDF files here, or click to select
+                Drag & drop wedding podcast transcript PDFs here, or click to select
               </p>
               <p className="text-sm text-gray-500">
-                Supports files of any size • Automatic processing method selection
+                AI will extract metadata from the full transcript content
               </p>
             </div>
           )}
@@ -249,18 +283,10 @@ export function SmartUpload() {
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-gray-900">Selected Files:</h3>
               {uploadMethod && (
-                <div className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm ${
-                  uploadMethod.method === 'direct-upload' 
-                    ? 'bg-green-100 text-green-700 border border-green-200'
-                    : 'bg-blue-100 text-blue-700 border border-blue-200'
-                }`}>
-                  {uploadMethod.method === 'direct-upload' ? (
-                    <Zap className="w-4 h-4" />
-                  ) : (
-                    <Cpu className="w-4 h-4" />
-                  )}
+                <div className="flex items-center gap-2 px-3 py-1 rounded-lg text-sm bg-rose-100 text-rose-700 border border-rose-200">
+                  <Zap className="w-4 h-4" />
                   <span className="font-medium">
-                    {uploadMethod.method === 'direct-upload' ? 'Direct Upload' : 'Storage Upload'}
+                    Wedding Podcast API
                   </span>
                   <span className="text-xs opacity-75">
                     ({uploadMethod.totalSizeMB.toFixed(1)}MB)
