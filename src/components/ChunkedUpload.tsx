@@ -12,11 +12,16 @@ export function ChunkedUpload() {
   const [metadata, setMetadata] = useState<DocumentMetadata>({
     title: '',
     author: '',
+    summary: '',
+    tags: '',
+    tone: '',
+    audience: '',
+    category: '',
+    // Legacy fields for backward compatibility
     doc_type: '',
     genre: '',
     topic: '',
     difficulty: '',
-    tags: '',
     description: ''
   })
   
@@ -143,11 +148,16 @@ export function ChunkedUpload() {
           setMetadata({
             title: '',
             author: '',
+            summary: '',
+            tags: '',
+            tone: '',
+            audience: '',
+            category: '',
+            // Legacy fields for backward compatibility
             doc_type: '',
             genre: '',
             topic: '',
             difficulty: '',
-            tags: '',
             description: ''
           })
           setUploadResult(null)
@@ -167,11 +177,16 @@ export function ChunkedUpload() {
     setMetadata({
       title: '',
       author: '',
+      summary: '',
+      tags: '',
+      tone: '',
+      audience: '',
+      category: '',
+      // Legacy fields for backward compatibility
       doc_type: '',
       genre: '',
       topic: '',
       difficulty: '',
-      tags: '',
       description: ''
     })
     setUploadResult(null)

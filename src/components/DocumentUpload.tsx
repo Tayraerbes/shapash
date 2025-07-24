@@ -11,11 +11,16 @@ export function DocumentUpload() {
   const [metadata, setMetadata] = useState<DocumentMetadata>({
     title: '',
     author: '',
+    summary: '',
+    tags: '',
+    tone: '',
+    audience: '',
+    category: '',
+    // Legacy fields for backward compatibility
     doc_type: '',
     genre: '',
     topic: '',
     difficulty: '',
-    tags: '',
     description: ''
   })
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
@@ -230,11 +235,16 @@ export function DocumentUpload() {
         setMetadata({
           title: '',
           author: '',
+          summary: '',
+          tags: '',
+          tone: '',
+          audience: '',
+          category: '',
+          // Legacy fields for backward compatibility
           doc_type: '',
           genre: '',
           topic: '',
           difficulty: '',
-          tags: '',
           description: ''
         })
         setChunkStats(null)
@@ -256,11 +266,16 @@ export function DocumentUpload() {
     setMetadata({
       title: '',
       author: '',
+      summary: '',
+      tags: '',
+      tone: '',
+      audience: '',
+      category: '',
+      // Legacy fields for backward compatibility
       doc_type: '',
       genre: '',
       topic: '',
       difficulty: '',
-      tags: '',
       description: ''
     })
     setChunkStats(null)
