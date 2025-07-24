@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
     const { 
       sessionId, 
       metadata,
-      chunkSize = 5000,
-      chunkOverlap = 500,
+      chunkSize = 500,
+      chunkOverlap = 50,
       splitterType = 'recursive'
     } = await request.json()
 

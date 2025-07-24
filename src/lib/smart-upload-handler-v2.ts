@@ -88,8 +88,8 @@ async function handleDirectUpload(
   options: UploadOptions
 ): Promise<UploadResult> {
   const { 
-    chunkSize = 5000, 
-    chunkOverlap = 500, 
+    chunkSize = 500, 
+    chunkOverlap = 50, 
     splitterType = 'recursive',
     onProgress 
   } = options
@@ -142,8 +142,8 @@ async function handleStorageUpload(
   options: UploadOptions
 ): Promise<UploadResult> {
   const { 
-    chunkSize = 5000, 
-    chunkOverlap = 500, 
+    chunkSize = 500,
+    chunkOverlap = 50, 
     splitterType = 'recursive',
     onProgress 
   } = options

@@ -35,8 +35,8 @@ export function WeddingPodcastUpload() {
   // Advanced settings
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [splitterType, setSplitterType] = useState<'recursive' | 'character'>('recursive')
-  const [chunkSize, setChunkSize] = useState(5000)
-  const [chunkOverlap, setChunkOverlap] = useState(500)
+  const [chunkSize, setChunkSize] = useState(500)
+  const [chunkOverlap, setChunkOverlap] = useState(50)
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const pdfFiles = acceptedFiles.filter(file => file.type === 'application/pdf')

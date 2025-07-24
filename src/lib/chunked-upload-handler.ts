@@ -87,8 +87,8 @@ async function handleDirectUpload(
   options: ChunkedUploadOptions
 ): Promise<ChunkedUploadResult> {
   const { 
-    chunkSize = 5000, 
-    chunkOverlap = 500, 
+    chunkSize = 500, 
+    chunkOverlap = 50, 
     splitterType = 'recursive',
     onProgress 
   } = options
@@ -271,8 +271,8 @@ async function processCompletedChunkedUpload(
       body: JSON.stringify({ 
         sessionId, 
         metadata,
-        chunkSize: options.chunkSize || 5000,
-        chunkOverlap: options.chunkOverlap || 500,
+        chunkSize: options.chunkSize || 500,
+        chunkOverlap: options.chunkOverlap || 50,
         splitterType: options.splitterType || 'recursive'
       })
     })

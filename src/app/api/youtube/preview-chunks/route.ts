@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     console.log('📋 YouTube chunk preview API called')
     
     const body = await request.json()
-    const { transcript, chunkSize = 5000, chunkOverlap = 500 } = body
+    const { transcript, chunkSize = 500, chunkOverlap = 50 } = body
 
     console.log('📋 Preview request:', {
       transcriptLength: transcript?.length || 0,

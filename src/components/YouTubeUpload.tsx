@@ -46,8 +46,8 @@ export function YouTubeUpload() {
   const [isUploading, setIsUploading] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [splitterType, setSplitterType] = useState<'recursive' | 'character' | 'markdown' | 'html'>('recursive')
-  const [chunkSize, setChunkSize] = useState(5000)
-  const [chunkOverlap, setChunkOverlap] = useState(500)
+  const [chunkSize, setChunkSize] = useState(500)
+  const [chunkOverlap, setChunkOverlap] = useState(50)
   const [result, setResult] = useState<ProcessResult | null>(null)
   const [processingStep, setProcessingStep] = useState('')
 

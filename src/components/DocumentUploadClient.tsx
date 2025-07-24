@@ -46,8 +46,8 @@ export default function DocumentUploadClient() {
   })
   
   const [splitterType, setSplitterType] = useState<'recursive' | 'character' | 'markdown' | 'html'>('recursive')
-  const [chunkSize, setChunkSize] = useState(5000)
-  const [chunkOverlap, setChunkOverlap] = useState(500)
+  const [chunkSize, setChunkSize] = useState(500)
+  const [chunkOverlap, setChunkOverlap] = useState(50)
   
   const [isProcessing, setIsProcessing] = useState(false)
   const [processedData, setProcessedData] = useState<{

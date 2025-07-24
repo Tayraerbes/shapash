@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const files = formData.getAll('files') as File[]
     const splitterType = formData.get('splitterType') as string || 'recursive'
-    const chunkSize = parseInt(formData.get('chunkSize') as string) || 5000
-    const chunkOverlap = parseInt(formData.get('chunkOverlap') as string) || 500
+    const chunkSize = parseInt(formData.get('chunkSize') as string) || 500
+    const chunkOverlap = parseInt(formData.get('chunkOverlap') as string) || 50
     const pdfParser = formData.get('pdfParser') as ParserType || 'pdf-parse'
 
     console.log('🎙️ Wedding podcast upload request:', {

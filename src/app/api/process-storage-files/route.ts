@@ -18,8 +18,8 @@ export async function POST(request: NextRequest) {
       files,        // Array of { path: string, originalName: string }
       metadata, 
       splitterType = 'recursive',
-      chunkSize = 5000,
-      chunkOverlap = 500
+      chunkSize = 500,
+      chunkOverlap = 50
     } = body
 
     console.log('📊 Process storage files request:', {
