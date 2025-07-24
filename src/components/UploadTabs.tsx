@@ -12,7 +12,7 @@ import { CSVVendorUpload } from './CSVVendorUpload'
 type TabType = 'basic' | 'chunked' | 'server' | 'client' | 'youtube' | 'wedding' | 'vendors'
 
 export default function UploadTabs() {
-  const [activeTab, setActiveTab] = useState<TabType>('vendors')
+  const [activeTab, setActiveTab] = useState<TabType>('wedding')
 
   const tabs = [
     {
@@ -23,15 +23,6 @@ export default function UploadTabs() {
       bgColor: 'bg-rose-100',
       textColor: 'text-rose-600',
       featureColor: 'text-rose-600'
-    },
-    {
-      id: 'vendors' as TabType,
-      name: 'Wedding Vendors',
-      icon: Store,
-      description: 'Upload CSV files with vendor contact information',
-      bgColor: 'bg-green-100',
-      textColor: 'text-green-600',
-      featureColor: 'text-green-600'
     },
     {
       id: 'basic' as TabType,
@@ -68,6 +59,15 @@ export default function UploadTabs() {
       bgColor: 'bg-indigo-100',
       textColor: 'text-indigo-600',
       featureColor: 'text-indigo-600'
+    },
+    {
+      id: 'vendors' as TabType,
+      name: 'Wedding Vendors',
+      icon: Store,
+      description: 'Upload CSV files with vendor contact information',
+      bgColor: 'bg-green-100',
+      textColor: 'text-green-600',
+      featureColor: 'text-green-600'
     },
     {
       id: 'youtube' as TabType,
