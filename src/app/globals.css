@@ -4,48 +4,57 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Wedding Theme Colors */
+    --wedding-rose: 347 77% 58%;
+    --wedding-pink: 330 81% 68%;
+    --wedding-blush: 351 100% 96%;
+    --wedding-cream: 43 100% 98%;
+    --wedding-gold: 45 93% 58%;
+    --wedding-sage: 84 20% 55%;
+    
+    /* System Colors with Wedding Touch */
+    --background: 351 100% 99%;
+    --foreground: 347 30% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 347 30% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 347 30% 15%;
+    --primary: 347 77% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 351 100% 96%;
+    --secondary-foreground: 347 30% 15%;
+    --muted: 351 100% 96%;
+    --muted-foreground: 347 20% 45%;
+    --accent: 351 100% 96%;
+    --accent-foreground: 347 77% 58%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --destructive-foreground: 351 100% 99%;
+    --border: 347 30% 90%;
+    --input: 347 30% 90%;
+    --ring: 347 77% 58%;
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    --background: 347 30% 5%;
+    --foreground: 351 100% 96%;
+    --card: 347 30% 8%;
+    --card-foreground: 351 100% 96%;
+    --popover: 347 30% 8%;
+    --popover-foreground: 351 100% 96%;
+    --primary: 347 77% 68%;
+    --primary-foreground: 347 30% 10%;
+    --secondary: 347 20% 15%;
+    --secondary-foreground: 351 100% 96%;
+    --muted: 347 20% 15%;
+    --muted-foreground: 347 20% 65%;
+    --accent: 347 20% 15%;
+    --accent-foreground: 347 77% 68%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 351 100% 96%;
+    --border: 347 20% 20%;
+    --input: 347 20% 20%;
+    --ring: 347 77% 68%;
   }
 }
 
@@ -55,5 +64,82 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Wedding-themed scroll bars */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-rose-50;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-rose-300 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-rose-400;
+  }
+}
+
+@layer components {
+  /* Wedding-themed animations */
+  .wedding-shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(251, 113, 133, 0.1),
+      transparent
+    );
+    animation: shimmer 2s infinite;
+  }
+  
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  
+  .wedding-glow {
+    box-shadow: 0 0 20px rgba(251, 113, 133, 0.3);
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+  
+  @keyframes glow {
+    from { box-shadow: 0 0 20px rgba(251, 113, 133, 0.3); }
+    to { box-shadow: 0 0 30px rgba(251, 113, 133, 0.5); }
+  }
+  
+  /* Beautiful gradient text for wedding theme */
+  .wedding-gradient-text {
+    background: linear-gradient(135deg, 
+      hsl(var(--wedding-rose)), 
+      hsl(var(--wedding-pink))
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Elegant wedding card styles */
+  .wedding-card {
+    @apply bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-rose-200/50;
+    background-image: 
+      radial-gradient(circle at 20% 80%, rgba(251, 113, 133, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(244, 63, 94, 0.03) 0%, transparent 50%);
+  }
+  
+  /* Beautiful button variants */
+  .wedding-button-primary {
+    @apply bg-gradient-to-r from-rose-500 to-pink-500 text-white font-medium px-6 py-3 rounded-xl;
+    @apply hover:from-rose-600 hover:to-pink-600 transform hover:scale-105 transition-all duration-200;
+    @apply shadow-lg hover:shadow-xl;
+  }
+  
+  .wedding-button-secondary {
+    @apply bg-white/80 backdrop-blur-sm text-rose-700 font-medium px-6 py-3 rounded-xl;
+    @apply border border-rose-200 hover:border-rose-300 hover:bg-rose-50 transition-all duration-200;
   }
 } 
