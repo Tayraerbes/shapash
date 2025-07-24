@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Heart, Upload, Youtube, Settings, Database, MessageSquare, Sparkles, Menu, X, Crown } from 'lucide-react'
+import { Heart, Upload, Youtube, Settings, Database, MessageSquare, Sparkles, Menu, X, Crown, Store } from 'lucide-react'
 
 // Dynamic imports to prevent SSR issues
 const SmartUpload = dynamic(() => import('@/components/SmartUpload').then(mod => ({ default: mod.SmartUpload })), {
@@ -18,9 +18,10 @@ import { UnifiedChatInterface } from '@/components/UnifiedChatInterface'
 import { DocumentManager } from '@/components/DocumentManager'
 import { YouTubeUpload } from '@/components/YouTubeUpload'
 import { DatabaseView } from '@/components/DatabaseView'
+import { CSVVendorUpload } from '@/components/CSVVendorUpload'
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'smart' | 'youtube' | 'manage' | 'database'>('chat')
+  const [activeTab, setActiveTab] = useState<'chat' | 'smart' | 'vendors' | 'youtube' | 'manage' | 'database'>('chat')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const navigationItems = [
@@ -39,6 +40,14 @@ export default function Home() {
       description: 'Add Wedding Resources',
       color: 'emerald',
       gradient: 'from-emerald-500 to-teal-500'
+    },
+    { 
+      id: 'vendors', 
+      label: 'Wedding Vendors', 
+      icon: Store, 
+      description: 'Upload Vendor Lists',
+      color: 'green',
+      gradient: 'from-green-500 to-emerald-500'
     },
     { 
       id: 'youtube', 
@@ -75,6 +84,7 @@ export default function Home() {
     const descriptions = {
       chat: 'Get personalized wedding planning advice from your AI assistant. Ask about venues, vendors, timelines, and more.',
       smart: 'Upload wedding podcasts, vendor lists, and planning resources to build your personalized knowledge base.',
+      vendors: 'Upload CSV files containing wedding vendor information - florists, venues, photographers, and more. AI-powered processing for easy vendor discovery.',
       youtube: 'Process wedding planning videos and extract valuable advice to enhance your planning journey.',
       manage: 'Organize your wedding planning resources, vendor contacts, and planning materials in one beautiful space.',
       database: 'Explore all your wedding planning content, from vendor contacts to expert advice and planning tips.'
@@ -88,6 +98,7 @@ export default function Home() {
     const activeClasses = {
       rose: 'bg-gradient-to-r from-rose-50 to-pink-50 text-rose-700 border-rose-200',
       emerald: 'bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border-emerald-200',
+      green: 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-200',
       purple: 'bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-700 border-purple-200',
       amber: 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border-amber-200',
       slate: 'bg-gradient-to-r from-slate-50 to-gray-50 text-slate-700 border-slate-200'
@@ -102,6 +113,7 @@ export default function Home() {
     const iconClasses = {
       rose: 'bg-gradient-to-r from-rose-100 to-pink-100 text-rose-600',
       emerald: 'bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-600',
+      green: 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-600',
       purple: 'bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-600',
       amber: 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-600',
       slate: 'bg-gradient-to-r from-slate-100 to-gray-100 text-slate-600'
@@ -236,6 +248,16 @@ export default function Home() {
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-pink-100 to-transparent rounded-full translate-y-12 -translate-x-12"></div>
                 <div className="relative z-10">
                   <SmartUpload />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'vendors' && (
+              <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-xl border border-green-200/50 p-8 overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-green-100 to-transparent rounded-full -translate-y-16 translate-x-16"></div>
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-emerald-100 to-transparent rounded-full translate-y-12 -translate-x-12"></div>
+                <div className="relative z-10">
+                  <CSVVendorUpload />
                 </div>
               </div>
             )}

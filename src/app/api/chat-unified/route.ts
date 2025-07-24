@@ -1109,8 +1109,223 @@ User Request: ${message}`
   }
 }
 
+// Enhanced vendor query detection
+function detectVendorQuery(message: string): {
+  isVendorQuery: boolean
+  extractedLocation?: string
+  extractedCategory?: string
+  requestedFields?: string[]
+} {
+  const messageLC = message.toLowerCase()
+  
+  // Check for vendor-specific requests
+  const vendorIndicators = [
+    'vendor', 'florist', 'photographer', 'venue', 'supplier', 'business',
+    'email', 'contact', 'phone', 'website', 'address', 'location'
+  ]
+  
+  const locationIndicators = [
+    'in ', 'near ', 'from ', 'located in', 'based in', 'around'
+  ]
+  
+  const isVendorQuery = vendorIndicators.some(indicator => messageLC.includes(indicator))
+  
+  if (!isVendorQuery) {
+    return { isVendorQuery: false }
+  }
+
+  // Extract location
+  let extractedLocation: string | undefined = undefined
+  const locationPatterns = [
+    /\b(?:in|near|from|around)\s+([a-zA-Z\s]+?)(?:\s|$|,|\?|\.)/gi,
+    /\b([a-zA-Z\s]+)\s+(?:county|area|region)\b/gi
+  ]
+  
+  for (const pattern of locationPatterns) {
+    const match = pattern.exec(message)
+    if (match) {
+      extractedLocation = match[1].trim()
+      break
+    }
+  }
+
+  // Extract category
+  let extractedCategory: string | undefined = undefined
+  const categoryPatterns = [
+    /\b(florist|photographer|venue|caterer|band|dj|cake|dress|suit|makeup|hair|transport|decoration|flower|music|entertainment)\w*\b/gi
+  ]
+  
+  for (const pattern of categoryPatterns) {
+    const match = pattern.exec(message)
+    if (match) {
+      extractedCategory = match[1].toLowerCase()
+      break
+    }
+  }
+
+  // Extract requested fields
+  const requestedFields = []
+  if (messageLC.includes('email') || messageLC.includes('contact')) requestedFields.push('email')
+  if (messageLC.includes('website') || messageLC.includes('site')) requestedFields.push('website')
+  if (messageLC.includes('phone') || messageLC.includes('number')) requestedFields.push('phone')
+  if (messageLC.includes('address') || messageLC.includes('location')) requestedFields.push('address')
+
+  return {
+    isVendorQuery: true,
+    extractedLocation,
+    extractedCategory,
+    requestedFields
+  }
+}
+
+// Enhanced vendor search handler
+async function handleVendorSearch(
+  message: string,
+  vendorQuery: any,
+  supabase: any
+) {
+  console.log('🏪 Handling vendor search request:', vendorQuery)
+  
+  try {
+    // Use the specialized vendor search function
+    const { data: vendorResults, error: vendorError } = await supabase.rpc(
+      'search_vendors_by_location',
+      {
+        location_query: vendorQuery.extractedLocation,
+        vendor_category: vendorQuery.extractedCategory,
+        limit_count: 20
+      }
+    )
+
+    if (vendorError) {
+      console.error('❌ Vendor search error:', vendorError)
+      throw new Error(`Vendor search failed: ${vendorError.message}`)
+    }
+
+    console.log(`📊 Found ${vendorResults?.length || 0} vendors`)
+
+    // If no results, try a broader search
+    if (!vendorResults || vendorResults.length === 0) {
+      console.log('🔄 No specific matches, trying broader vendor search...')
+      
+      const { data: broadResults, error: broadError } = await supabase.rpc(
+        'search_vendors_by_location',
+        {
+          location_query: vendorQuery.extractedLocation,
+          vendor_category: null, // Remove category filter
+          limit_count: 20
+        }
+      )
+
+      if (!broadError && broadResults && broadResults.length > 0) {
+        const filteredBroad = broadResults.filter((vendor: any) => 
+          !vendorQuery.extractedCategory || 
+          vendor.category?.toLowerCase().includes(vendorQuery.extractedCategory) ||
+          vendor.supplier?.toLowerCase().includes(vendorQuery.extractedCategory)
+        )
+        
+        return {
+          vendors: filteredBroad.length > 0 ? filteredBroad : broadResults.slice(0, 10),
+          searchDetails: {
+            originalQuery: message,
+            location: vendorQuery.extractedLocation,
+            category: vendorQuery.extractedCategory,
+            searchType: filteredBroad.length > 0 ? 'broad_filtered' : 'broad_all',
+            resultsFound: filteredBroad.length > 0 ? filteredBroad.length : broadResults.length
+          }
+        }
+      }
+    }
+
+    return {
+      vendors: vendorResults || [],
+      searchDetails: {
+        originalQuery: message,
+        location: vendorQuery.extractedLocation,
+        category: vendorQuery.extractedCategory,
+        searchType: 'specific',
+        resultsFound: vendorResults?.length || 0
+      }
+    }
+    } catch (error: unknown) {
+    console.error('❌ Error in vendor search:', error)
+    return {
+      vendors: [],
+      searchDetails: {
+        originalQuery: message,
+        location: vendorQuery.extractedLocation,
+        category: vendorQuery.extractedCategory,
+        searchType: 'error',
+        resultsFound: 0,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
+  }
+}
+
 async function handleAsk(message: string, classification: QueryClassification, supabase: any, relevantFeedback: any[] = []) {
   console.log('💬 Handling general question with hybrid approach')
+  
+  // Check if this is a vendor-specific query first
+  const vendorQuery = detectVendorQuery(message)
+  
+  if (vendorQuery.isVendorQuery) {
+    console.log('🏪 Detected vendor query, using specialized search')
+    
+    const vendorResult = await handleVendorSearch(message, vendorQuery, supabase)
+    
+    // Format vendor results for the AI
+    let vendorContext = ''
+    if (vendorResult.vendors.length > 0) {
+      vendorContext = vendorResult.vendors.map((vendor: any, i: number) => 
+        `VENDOR ${i + 1}: ${vendor.supplier || vendor.title}
+Category: ${vendor.category}
+Location: ${vendor.county}
+Email: ${vendor.email || 'Not provided'}
+Website: ${vendor.website || 'Not provided'}
+Details: ${vendor.content || 'Contact for more information'}`
+      ).join('\n\n')
+    }
+
+    const vendorSystemPrompt = `You are a wedding planning assistant specialized in vendor recommendations. You have access to a comprehensive vendor database.
+
+VENDOR SEARCH RESULTS:
+${vendorContext || 'No vendors found matching the criteria.'}
+
+SEARCH DETAILS:
+- Original query: "${vendorResult.searchDetails.originalQuery}"
+- Location searched: ${vendorResult.searchDetails.location || 'Any location'}
+- Category searched: ${vendorResult.searchDetails.category || 'Any category'}
+- Search type: ${vendorResult.searchDetails.searchType}
+- Results found: ${vendorResult.searchDetails.resultsFound}
+
+RESPONSE GUIDELINES:
+1. If vendors were found, present them in a helpful, organized format
+2. Include contact information (email, website) when requested and available
+3. If no exact matches, suggest related vendors or broader searches
+4. Always be helpful and provide actionable information for wedding planning
+5. If location or category wasn't clear, ask for clarification
+
+User Question: ${message}`
+
+    const response = await generateChatCompletion([
+      { role: 'system', content: vendorSystemPrompt },
+      { role: 'user', content: message }
+    ])
+
+    return {
+      directResponse: response,
+      sources: vendorResult.vendors.map((vendor: any) => ({
+        title: vendor.supplier || vendor.title,
+        author: 'Wedding Vendor',
+        content: `Category: ${vendor.category}, Location: ${vendor.county}, Email: ${vendor.email}, Website: ${vendor.website}`,
+        doc_type: 'Wedding Vendor',
+        similarity: 1.0,
+        vendor_info: vendor
+      })),
+      vendorSearchDetails: vendorResult.searchDetails
+    }
+  }
   
   // Search for relevant context first
   const queryEmbedding = await generateEmbedding(message)
