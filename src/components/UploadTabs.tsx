@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Server, Monitor, FileText, Youtube, Package, Mic } from 'lucide-react'
+import { Server, Monitor, FileText, Youtube, Package, Mic, Store } from 'lucide-react'
 import { DocumentUpload } from './DocumentUpload'
 import { ChunkedUpload } from './ChunkedUpload'
 import DocumentUploadClient from './DocumentUploadClient'
 import { YouTubeUpload } from './YouTubeUpload'
 import { WeddingPodcastUpload } from './WeddingPodcastUpload'
+import { CSVVendorUpload } from './CSVVendorUpload'
 
-type TabType = 'basic' | 'chunked' | 'server' | 'client' | 'youtube' | 'wedding'
+type TabType = 'basic' | 'chunked' | 'server' | 'client' | 'youtube' | 'wedding' | 'vendors'
 
 export default function UploadTabs() {
   const [activeTab, setActiveTab] = useState<TabType>('wedding')
@@ -22,6 +23,15 @@ export default function UploadTabs() {
       bgColor: 'bg-rose-100',
       textColor: 'text-rose-600',
       featureColor: 'text-rose-600'
+    },
+    {
+      id: 'vendors' as TabType,
+      name: 'Wedding Vendors',
+      icon: Store,
+      description: 'Upload CSV files with vendor contact information',
+      bgColor: 'bg-green-100',
+      textColor: 'text-green-600',
+      featureColor: 'text-green-600'
     },
     {
       id: 'basic' as TabType,
@@ -46,18 +56,18 @@ export default function UploadTabs() {
       name: 'Client-Side',
       icon: Monitor,
       description: 'Process files locally in your browser',
-      bgColor: 'bg-green-100',
-      textColor: 'text-green-600',
-      featureColor: 'text-green-600'
+      bgColor: 'bg-purple-100',
+      textColor: 'text-purple-600',
+      featureColor: 'text-purple-600'
     },
     {
       id: 'server' as TabType,
       name: 'Server-Side',
       icon: Server,
       description: 'Traditional server processing',
-      bgColor: 'bg-purple-100',
-      textColor: 'text-purple-600',
-      featureColor: 'text-purple-600'
+      bgColor: 'bg-indigo-100',
+      textColor: 'text-indigo-600',
+      featureColor: 'text-indigo-600'
     },
     {
       id: 'youtube' as TabType,
@@ -73,6 +83,7 @@ export default function UploadTabs() {
   const renderFeatures = (tabId: TabType, featureColor: string) => {
     const features = {
       wedding: ['✓ AI metadata generation', '✓ Wedding-focused tags', '✓ Expert categorization'],
+      vendors: ['✓ CSV row-by-row processing', '✓ Location-based search', '✓ Contact information'],
       basic: ['✓ Simple & fast', '✓ Direct processing', '✓ < 4MB files'],
       chunked: ['✓ Handles Vercel limits', '✓ 2MB chunks', '✓ Session tracking'],
       client: ['✓ Browser processing', '✓ Large files', '✓ No server limits'],
@@ -89,6 +100,19 @@ export default function UploadTabs() {
     )
   }
 
+  const getTabColors = (tabId: TabType, isActive: boolean) => {
+    if (!isActive) return { border: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', bg: '' }
+    
+    switch (tabId) {
+      case 'wedding':
+        return { border: 'border-rose-500 text-rose-600', bg: 'bg-rose-50' }
+      case 'vendors':
+        return { border: 'border-green-500 text-green-600', bg: 'bg-green-50' }
+      default:
+        return { border: 'border-blue-500 text-blue-600', bg: 'bg-blue-50' }
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -103,16 +127,13 @@ export default function UploadTabs() {
           {tabs.map((tab) => {
             const IconComponent = tab.icon
             const isActive = activeTab === tab.id
+            const colors = getTabColors(tab.id, isActive)
             
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`group relative min-w-0 overflow-hidden py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-                  isActive
-                    ? `border-${tab.id === 'wedding' ? 'rose' : 'blue'}-500 ${tab.textColor}`
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`group relative min-w-0 overflow-hidden py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${colors.border}`}
               >
                 <div className="flex items-center gap-2">
                   <div className={`p-1 rounded transition-colors ${isActive ? tab.bgColor : 'group-hover:bg-gray-100'}`}>
@@ -131,13 +152,14 @@ export default function UploadTabs() {
         {tabs.map((tab) => {
           const IconComponent = tab.icon
           const isActive = activeTab === tab.id
+          const colors = getTabColors(tab.id, isActive)
           
           return (
             <div 
               key={tab.id} 
               className={`p-4 rounded-lg border cursor-pointer transition-all ${
                 isActive
-                  ? `border-${tab.id === 'wedding' ? 'rose' : 'blue'}-500 ${tab.id === 'wedding' ? 'bg-rose-50' : 'bg-blue-50'}` 
+                  ? `${colors.border.replace('border-', 'border-').replace(' text-', ' ')} ${colors.bg}` 
                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }`}
               onClick={() => setActiveTab(tab.id)}
@@ -158,6 +180,7 @@ export default function UploadTabs() {
       {/* Tab Content */}
       <div className="transition-opacity duration-300">
         {activeTab === 'wedding' && <WeddingPodcastUpload />}
+        {activeTab === 'vendors' && <CSVVendorUpload />}
         {activeTab === 'basic' && <DocumentUpload />}
         {activeTab === 'chunked' && <ChunkedUpload />}
         {activeTab === 'client' && <DocumentUploadClient />}
@@ -166,13 +189,17 @@ export default function UploadTabs() {
       </div>
 
       {/* Info Panel */}
-      <div className="mt-6 bg-rose-50 border border-rose-200 rounded-lg p-4">
+      <div className="mt-6 bg-gradient-to-r from-rose-50 to-green-50 border border-rose-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <Mic className="w-5 h-5 text-rose-600 mt-0.5" />
+          <div className="flex gap-1">
+            <Mic className="w-4 h-4 text-rose-600 mt-0.5" />
+            <Store className="w-4 h-4 text-green-600 mt-0.5" />
+          </div>
           <div>
-            <h4 className="font-semibold text-rose-800 mb-1">Wedding Content Processing Methods</h4>
-            <div className="text-sm text-rose-700 space-y-1">
+            <h4 className="font-semibold text-gray-800 mb-1">Wedding Content Processing Methods</h4>
+            <div className="text-sm text-gray-700 space-y-1">
               <p><strong>Wedding Podcasts:</strong> AI analyzes the full transcript to generate accurate wedding-specific metadata including title, host, summary, tags, tone, audience, and category.</p>
+              <p><strong>Wedding Vendors:</strong> CSV files are processed row-by-row, creating searchable vendor entries with contact details, location, and service categories.</p>
               <p><strong>Basic Upload:</strong> Simple server-side processing for files under 4MB. Best for quick uploads of smaller documents.</p>
               <p><strong>Chunked Upload:</strong> Splits large files into 2MB chunks to bypass Vercel's 4.5MB limit. Uses upload sessions to track progress and reassemble files server-side.</p>
               <p><strong>Client-Side:</strong> Best for large PDF books (10MB+). Processes files in your browser using PDF.js.</p>
