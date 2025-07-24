@@ -298,7 +298,7 @@ export function WeddingPodcastUpload() {
               <span className="font-medium">AI-Powered Metadata Generation</span>
             </div>
             <p className="text-rose-600 text-sm">
-              Click "Generate Metadata" to automatically extract title, author, summary, and other details from the PDF transcript content. You can edit any field before uploading.
+              Click &quot;Generate Metadata&quot; to automatically extract title, author, summary, and other details from the PDF transcript content. You can edit any field before uploading.
             </p>
           </div>
 
