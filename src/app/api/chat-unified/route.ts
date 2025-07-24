@@ -28,12 +28,11 @@ function extractPageFromContent(content: string): number | null {
   return null
 }
 
-// Clean 4-bucket system with clear purposes
+// Clean 3-bucket system with clear purposes
 type QueryType = 
   | 'catalog'          // "Show me what you have" - browse/inventory
   | 'search'           // "Find me content about X" - targeted search within knowledge base
-  | 'recommend'        // "Suggest something good" - curated recommendations
-  | 'ask'             // "Answer my question" - hybrid knowledge + general advice
+  | 'ask'             // "Answer my question" - hybrid knowledge + general advice (includes recommendations)
 
 interface QueryClassification {
   type: QueryType
@@ -152,14 +151,14 @@ async function classifyQuery(message: string): Promise<QueryClassification> {
     }
   }
 
-  // 2. RECOMMEND - "Suggest something good" - curated recommendations
+  // 2. RECOMMENDATIONS - Route to 'ask' for hybrid knowledge + general advice
   if (/\b(recommend|suggest|best|top|should\s+i\s+read|what\s+to\s+read|good\s+book|give\s+me\s+a\s+book)/i.test(message) ||
       /\b(another\s+one|give\s+me\s+another|more\s+like|similar)\b/i.test(message) ||
       /\b(reading\s+list|book\s+for\s+me|what.*read)\b/i.test(message)) {
     return {
-      type: 'recommend',
+      type: 'ask',
       confidence: 0.90,
-      reasoning: 'User asking for curated recommendations',
+      reasoning: 'User asking for recommendations - routing to hybrid knowledge system',
       contentFilter
     }
   }
@@ -1456,11 +1455,6 @@ export async function POST(request: NextRequest) {
           { role: 'system', content: searchSystemPrompt },
           { role: 'user', content: queryToUse }
         ])
-        break
-
-      case 'recommend':
-        result = await handleRecommend(queryToUse, classification, supabase, chatHistory, relevantFeedback)
-        response = result.directResponse
         break
 
       case 'ask':
