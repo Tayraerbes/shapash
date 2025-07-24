@@ -201,7 +201,7 @@ export default function UploadTabs() {
               <p><strong>Wedding Podcasts:</strong> AI analyzes the full transcript to generate accurate wedding-specific metadata including title, host, summary, tags, tone, audience, and category.</p>
               <p><strong>Wedding Vendors:</strong> CSV files are processed row-by-row, creating searchable vendor entries with contact details, location, and service categories.</p>
               <p><strong>Basic Upload:</strong> Simple server-side processing for files under 4MB. Best for quick uploads of smaller documents.</p>
-              <p><strong>Chunked Upload:</strong> Splits large files into 2MB chunks to bypass Vercel's 4.5MB limit. Uses upload sessions to track progress and reassemble files server-side.</p>
+              <p><strong>Chunked Upload:</strong> Splits large files into 2MB chunks to bypass Vercel&apos;s 4.5MB limit. Uses upload sessions to track progress and reassemble files server-side.</p>
               <p><strong>Client-Side:</strong> Best for large PDF books (10MB+). Processes files in your browser using PDF.js.</p>
               <p><strong>Server-Side:</strong> Traditional server processing method. Reliable for standard document uploads.</p>
               <p><strong>YouTube:</strong> Extracts transcripts using SUPADATA API and corrects grammar with GPT-4o-mini.</p>
