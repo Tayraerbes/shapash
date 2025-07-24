@@ -1265,13 +1265,18 @@ async function handleAsk(message: string, classification: QueryClassification, s
   // Check if this is a vendor-specific query first
   const vendorQuery = detectVendorQuery(message)
   
+  // HYBRID APPROACH: Search both vendor database AND podcast content for comprehensive answers
+  let vendorContext = ''
+  let vendorSources: any[] = []
+  let vendorSearchDetails = null
+  
   if (vendorQuery.isVendorQuery) {
-    console.log('🏪 Detected vendor query, using specialized search')
+    console.log('🏪 Detected vendor query, using hybrid search (vendors + content)')
     
     const vendorResult = await handleVendorSearch(message, vendorQuery, supabase)
+    vendorSearchDetails = vendorResult.searchDetails
     
     // Format vendor results for the AI
-    let vendorContext = ''
     if (vendorResult.vendors.length > 0) {
       vendorContext = vendorResult.vendors.map((vendor: any, i: number) => 
         `VENDOR ${i + 1}: ${vendor.supplier}
@@ -1280,45 +1285,15 @@ Location: ${vendor.county || 'Not specified'}
 Email: ${vendor.email || 'Not provided'}
 Website: ${vendor.website || 'Not provided'}`
       ).join('\n\n')
-    }
-
-    const vendorSystemPrompt = `You are a wedding planning assistant specialized in vendor recommendations. You have access to a comprehensive vendor database.
-
-VENDOR SEARCH RESULTS:
-${vendorContext || 'No vendors found matching the criteria.'}
-
-SEARCH DETAILS:
-- Original query: "${vendorResult.searchDetails.originalQuery}"
-- Location searched: ${vendorResult.searchDetails.location || 'Any location'}
-- Category searched: ${vendorResult.searchDetails.category || 'Any category'}
-- Search type: ${vendorResult.searchDetails.searchType}
-- Results found: ${vendorResult.searchDetails.resultsFound}
-
-RESPONSE GUIDELINES:
-1. If vendors were found, present them in a helpful, organized format
-2. Include contact information (email, website) when requested and available
-3. If no exact matches, suggest related vendors or broader searches
-4. Always be helpful and provide actionable information for wedding planning
-5. If location or category wasn't clear, ask for clarification
-
-User Question: ${message}`
-
-    const response = await generateChatCompletion([
-      { role: 'system', content: vendorSystemPrompt },
-      { role: 'user', content: message }
-    ])
-
-    return {
-      directResponse: response,
-      sources: vendorResult.vendors.map((vendor: any) => ({
+      
+      vendorSources = vendorResult.vendors.map((vendor: any) => ({
         title: vendor.supplier,
-        author: 'Wedding Vendor',
+        author: 'Wedding Vendor Directory',
         content: `Category: ${vendor.category}, Location: ${vendor.county}, Email: ${vendor.email}, Website: ${vendor.website}`,
         doc_type: 'Wedding Vendor',
         similarity: 1.0,
         vendor_info: vendor
-      })),
-      vendorSearchDetails: vendorResult.searchDetails
+      }))
     }
   }
   
@@ -1368,19 +1343,30 @@ Content: ${doc.content}`
     ).join('\n\n')
   }
 
-  let systemPrompt = `You are a knowledgeable assistant with access to both a specialized knowledge base and general knowledge.
+  let systemPrompt = `You are a comprehensive wedding planning assistant with access to both a vendor directory and expert content from wedding podcasts.
 
-${contextFromKnowledgeBase ? `RELEVANT CONTENT FROM MY KNOWLEDGE BASE:
+${vendorContext ? `WEDDING VENDOR DIRECTORY RESULTS:
+${vendorContext}
+
+VENDOR SEARCH DETAILS:
+- Location searched: ${vendorSearchDetails?.location || 'Any location'}
+- Category searched: ${vendorSearchDetails?.category || 'Any category'} 
+- Results found: ${vendorSearchDetails?.resultsFound || 0}
+
+` : ''}${contextFromKnowledgeBase ? `RELEVANT EXPERT CONTENT FROM WEDDING PODCASTS:
 ${contextFromKnowledgeBase}
 
-` : 'No specific relevant content found in my knowledge base. '} 
+` : ''} 
 
-INSTRUCTIONS:
-1. If I have relevant content in my knowledge base above, prioritize that information and cite the sources
-2. When referencing information from my knowledge base, use inline citations like: "According to The Intelligent Investor by Benjamin Graham..."
-3. Supplement with general knowledge if needed to provide a complete answer
-4. Be clear about what comes from my knowledge base vs general knowledge
-5. If no relevant knowledge base content, provide helpful general knowledge but mention the limitation
+INSTRUCTIONS FOR COMPREHENSIVE WEDDING PLANNING ASSISTANCE:
+1. **Vendor Information**: If vendors were found, present them clearly with contact details (email, website) when requested
+2. **Expert Advice**: Use podcast content to provide professional insights and tips relevant to the query
+3. **Combined Approach**: When possible, combine specific vendor recommendations with expert advice (e.g., "Here are florists in your area + here's what experts say about choosing florists")
+4. **Citations**: Reference sources like "According to [Podcast Title]..." for expert content and "From our vendor directory..." for vendor listings
+5. **Helpful Context**: If no exact vendor matches, suggest broader searches or related categories
+6. **Wedding Focus**: Always frame responses around wedding planning needs and considerations
+
+${vendorQuery.isVendorQuery ? 'This is a vendor-specific query - prioritize vendor directory results while supplementing with relevant expert advice.' : 'Focus on expert content from the podcast knowledge base.'}
 
 User Question: ${message}`
 
@@ -1392,22 +1378,29 @@ User Question: ${message}`
     { role: 'user', content: message }
   ])
 
-  // Add formatted citations to the response if we have sources
+  // Combine both vendor and podcast sources for comprehensive results
+  const allSources = [...vendorSources, ...sources]
+  
+  // Add formatted citations to the response if we have any sources
   let finalResponse = response
-  if (sources.length > 0) {
-    finalResponse = CitationFormatter.addCitationsToResponse(response, sources)
+  if (allSources.length > 0) {
+    finalResponse = CitationFormatter.addCitationsToResponse(response, allSources)
   }
 
   return {
     contextForAI: contextFromKnowledgeBase || 'No relevant knowledge base content found',
-    sources,
+    sources: allSources,
     metadata: {
       responseType: 'ask',
       hasKnowledgeBaseContent: contextFromKnowledgeBase.length > 0,
+      hasVendorResults: vendorSources.length > 0,
       combinesRetrievedAndGeneral: true,
-      sourcesCount: sources.length,
+      sourcesCount: allSources.length,
+      vendorSourcesCount: vendorSources.length,
+      podcastSourcesCount: sources.length,
       avgRelevance: sources.length > 0 ? Math.round(sources.reduce((sum, s) => sum + (s.similarity || 0), 0) / sources.length * 100) : 0
     },
+    vendorSearchDetails: vendorSearchDetails,
     directResponse: finalResponse
   }
 }
