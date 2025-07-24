@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { Upload, FileText, X, Bot, CheckCircle, AlertCircle, Heart, Mic } from 'lucide-react'
+import { Upload, FileText, X, Bot, CheckCircle, AlertCircle, Heart, Mic, Zap } from 'lucide-react'
 import { formatFileSize } from '@/lib/utils'
+import { DocumentMetadata } from '@/types'
 
 interface UploadProgress {
   stage: string
@@ -31,6 +32,17 @@ export function WeddingPodcastUpload() {
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState('')
+
+  // Metadata state
+  const [metadata, setMetadata] = useState<DocumentMetadata>({
+    title: '',
+    author: '',
+    summary: '',
+    tags: '',
+    tone: '',
+    audience: '',
+    category: ''
+  })
 
   // Advanced settings
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -61,6 +73,64 @@ export function WeddingPodcastUpload() {
 
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const updateMetadata = (field: keyof DocumentMetadata, value: string) => {
+    setMetadata(prev => ({ ...prev, [field]: value }))
+  }
+
+  const generateMetadata = async () => {
+    if (!files || files.length === 0) {
+      alert('Please upload PDF files first')
+      return
+    }
+
+    try {
+      // Extract PDF content first
+      const file = files[0] // Use first file for metadata generation
+      const formData = new FormData()
+      formData.append('file', file)
+
+      console.log('📄 Extracting PDF content for metadata generation...')
+      const extractResponse = await fetch('/api/extract-pdf-content', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!extractResponse.ok) {
+        throw new Error('Failed to extract PDF content')
+      }
+
+      const { content } = await extractResponse.json()
+      
+      if (!content || content.trim().length === 0) {
+        throw new Error('No text content found in PDF')
+      }
+
+      // Generate metadata from actual content
+      console.log('🤖 Generating metadata from PDF transcript...')
+      const metadataResponse = await fetch('/api/generate-wedding-podcast-metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          fullTranscript: content,
+          filename: file.name 
+        })
+      })
+
+      if (metadataResponse.ok) {
+        const data = await metadataResponse.json()
+        setMetadata(prev => ({
+          ...prev,
+          ...data.metadata
+        }))
+      } else {
+        alert('Failed to generate metadata. Please enter manually.')
+      }
+    } catch (error) {
+      console.error('Error generating metadata:', error)
+      alert('Failed to generate metadata. Please enter manually.')
+    }
   }
 
   const handleUpload = async () => {
@@ -205,6 +275,125 @@ export function WeddingPodcastUpload() {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Metadata Section */}
+      {files.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">Wedding Podcast Metadata</h3>
+            <button
+              onClick={generateMetadata}
+              className="flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors"
+            >
+              <Zap className="w-4 h-4" />
+              Generate Metadata
+            </button>
+          </div>
+
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg">
+            <div className="flex items-center gap-2 text-rose-700 text-sm mb-2">
+              <Bot className="w-4 h-4" />
+              <span className="font-medium">AI-Powered Metadata Generation</span>
+            </div>
+            <p className="text-rose-600 text-sm">
+              Click "Generate Metadata" to automatically extract title, author, summary, and other details from the PDF transcript content. You can edit any field before uploading.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Title *
+              </label>
+              <input
+                type="text"
+                value={metadata.title}
+                onChange={(e) => updateMetadata('title', e.target.value)}
+                placeholder="e.g., Wedding Planning Essentials"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Author/Host
+              </label>
+              <input
+                type="text"
+                value={metadata.author}
+                onChange={(e) => updateMetadata('author', e.target.value)}
+                placeholder="e.g., Sarah Johnson"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <input
+                type="text"
+                value={metadata.category}
+                onChange={(e) => updateMetadata('category', e.target.value)}
+                placeholder="e.g., Wedding Planning, Vendor Tips"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tone
+              </label>
+              <input
+                type="text"
+                value={metadata.tone}
+                onChange={(e) => updateMetadata('tone', e.target.value)}
+                placeholder="e.g., Conversational, Expert"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Audience
+              </label>
+              <input
+                type="text"
+                value={metadata.audience}
+                onChange={(e) => updateMetadata('audience', e.target.value)}
+                placeholder="e.g., Engaged Couples, Wedding Planners"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tags
+              </label>
+              <input
+                type="text"
+                value={metadata.tags}
+                onChange={(e) => updateMetadata('tags', e.target.value)}
+                placeholder="e.g., wedding planning, venues, budget"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Summary
+            </label>
+            <textarea
+              value={metadata.summary}
+              onChange={(e) => updateMetadata('summary', e.target.value)}
+              placeholder="Brief summary of the podcast content..."
+              rows={3}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+            />
+          </div>
         </div>
       )}
 

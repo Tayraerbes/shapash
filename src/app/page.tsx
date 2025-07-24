@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { Heart, Upload, Youtube, Settings, Database, MessageSquare, Sparkles, Menu, X, Crown, Store } from 'lucide-react'
 
 // Dynamic imports to prevent SSR issues
-const SmartUpload = dynamic(() => import('@/components/SmartUpload').then(mod => ({ default: mod.SmartUpload })), {
+const WeddingPodcastUpload = dynamic(() => import('@/components/WeddingPodcastUpload').then(mod => ({ default: mod.WeddingPodcastUpload })), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center p-12">
@@ -247,7 +247,7 @@ export default function Home() {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-rose-100 to-transparent rounded-full -translate-y-16 translate-x-16"></div>
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-pink-100 to-transparent rounded-full translate-y-12 -translate-x-12"></div>
                 <div className="relative z-10">
-                  <SmartUpload />
+                  <WeddingPodcastUpload />
                 </div>
               </div>
             )}

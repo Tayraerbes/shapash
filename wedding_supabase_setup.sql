@@ -230,6 +230,7 @@ $$;
 ALTER TABLE public.documents_enhanced ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.document_tracker ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wedding_vendors ENABLE ROW LEVEL SECURITY;
 
 -- Allow public access policies
 CREATE POLICY "Allow public read access" ON public.documents_enhanced FOR SELECT USING (true);
@@ -242,6 +243,11 @@ CREATE POLICY "Allow public insert access" ON public.feedback FOR INSERT WITH CH
 CREATE POLICY "Allow public read access" ON public.document_tracker FOR SELECT USING (true);
 CREATE POLICY "Allow public insert access" ON public.document_tracker FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update access" ON public.document_tracker FOR UPDATE USING (true);
+
+-- Wedding Vendors Table Policies
+CREATE POLICY "Allow public read access" ON public.wedding_vendors FOR SELECT USING (true);
+CREATE POLICY "Allow public insert access" ON public.wedding_vendors FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update access" ON public.wedding_vendors FOR UPDATE USING (true);
 
 -- =============================================
 -- SETUP COMPLETE! 
