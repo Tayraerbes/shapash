@@ -7,68 +7,58 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 -- 2. Main unified table for all wedding content
 CREATE TABLE IF NOT EXISTS public.documents_enhanced (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-    
-    -- Common fields used by both content types
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     title TEXT NOT NULL,
-    author TEXT,
+    author TEXT DEFAULT 'Unknown',
     content TEXT NOT NULL,
-    source_type TEXT NOT NULL, -- 'csv_vendors' or 'pdf_podcasts'
-    category TEXT,             -- Common field: vendor category or podcast category
-    
-    -- Standard RAG fields
-    doc_type TEXT DEFAULT 'Wedding Content',
-    genre TEXT DEFAULT 'Wedding Planning',
+    metadata JSONB DEFAULT '{}',
+    embedding vector(1536),
+    doc_type TEXT DEFAULT 'Unknown',
+    genre TEXT DEFAULT 'Unknown',
     topic TEXT,
     difficulty TEXT DEFAULT 'General',
     tags TEXT,
+    source_type TEXT NOT NULL, -- 'csv_vendors', 'pdf_podcasts', 'youtube', etc.
     summary TEXT,
-    
-    -- Technical fields
-    embedding vector(1536),    -- OpenAI embeddings
     chunk_id INTEGER DEFAULT 1,
     total_chunks INTEGER DEFAULT 1,
     source TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
-    -- Flexible metadata for type-specific fields
-    metadata JSONB DEFAULT '{}' -- This will store different schemas per content type
+    category TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- CSV Vendor Metadata Example:
--- {
---   "email": "contact@venue.com",
---   "county": "Yorkshire", 
---   "website": "www.venue.com",
---   "supplier": "Wedding Venues Ltd",
---   "address": "123 High Street",
---   "phone": "+44 1234 567890",
---   "price_range": "£££",
---   "capacity": 150
--- }
+-- 3b. Simple wedding vendors table (for CSV vendor data)
+CREATE TABLE IF NOT EXISTS public.wedding_vendors (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    supplier TEXT NOT NULL,
+    category TEXT NOT NULL,
+    county TEXT,
+    email TEXT,
+    website TEXT,
+    embedding vector(1536),
+    source_file TEXT,
+    row_index INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- PDF Podcast Metadata Example:
--- {
---   "tone": "informative",
---   "audience": "engaged couples",
---   "episode_number": 42,
---   "duration": "45 minutes",
---   "podcast_series": "Wedding Planning Weekly",
---   "key_topics": ["venue selection", "budgeting"]
--- }
 
--- 3. Create performance indexes
-CREATE INDEX IF NOT EXISTS documents_enhanced_title_idx ON public.documents_enhanced (title);
+
+-- Indexes for documents table
+CREATE INDEX IF NOT EXISTS documents_enhanced_embedding_idx ON public.documents_enhanced 
+USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 CREATE INDEX IF NOT EXISTS documents_enhanced_source_type_idx ON public.documents_enhanced (source_type);
 CREATE INDEX IF NOT EXISTS documents_enhanced_category_idx ON public.documents_enhanced (category);
 CREATE INDEX IF NOT EXISTS documents_enhanced_created_at_idx ON public.documents_enhanced (created_at);
 
--- Vector similarity search index
-CREATE INDEX IF NOT EXISTS documents_enhanced_embedding_idx ON public.documents_enhanced 
+-- Indexes for wedding vendors table  
+CREATE INDEX IF NOT EXISTS wedding_vendors_embedding_idx ON public.wedding_vendors 
 USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX IF NOT EXISTS wedding_vendors_category_idx ON public.wedding_vendors (category);
+CREATE INDEX IF NOT EXISTS wedding_vendors_county_idx ON public.wedding_vendors (county);
+CREATE INDEX IF NOT EXISTS wedding_vendors_supplier_idx ON public.wedding_vendors (supplier);
+CREATE INDEX IF NOT EXISTS wedding_vendors_email_idx ON public.wedding_vendors (email);
 
--- JSONB indexes for common metadata queries
+-- JSONB indexes for common metadata queries (documents table)
 CREATE INDEX IF NOT EXISTS documents_enhanced_metadata_county_idx ON public.documents_enhanced 
 USING GIN ((metadata->'county'));
 CREATE INDEX IF NOT EXISTS documents_enhanced_metadata_email_idx ON public.documents_enhanced 
@@ -159,42 +149,80 @@ BEGIN
 END;
 $$;
 
--- 7. Vendor search function
-CREATE OR REPLACE FUNCTION search_vendors_by_location (
-  location_query text,
+-- 7. Simple vendor search function
+CREATE OR REPLACE FUNCTION search_wedding_vendors (
+  location_query text DEFAULT NULL,
   vendor_category text DEFAULT NULL,
+  search_query text DEFAULT NULL,
   limit_count int DEFAULT 20
 )
 RETURNS TABLE (
   id text,
-  title text,
-  email text,
-  website text,
-  county text,
-  category text,
   supplier text,
-  content text
+  category text,
+  county text,
+  email text,
+  website text
 )
 LANGUAGE plpgsql
 AS $$
 BEGIN
   RETURN QUERY
   SELECT
-    d.id,
-    d.title,
-    d.metadata->>'email' as email,
-    d.metadata->>'website' as website,
-    d.metadata->>'county' as county,
-    d.category,
-    d.metadata->>'supplier' as supplier,
-    d.content
-  FROM documents_enhanced d
+    v.id,
+    v.supplier,
+    v.category,
+    v.county,
+    v.email,
+    v.website
+  FROM wedding_vendors v
   WHERE 
-    d.source_type = 'csv_vendors'
-    AND (location_query IS NULL OR d.metadata->>'county' ILIKE '%' || location_query || '%')
-    AND (vendor_category IS NULL OR d.category ILIKE '%' || vendor_category || '%')
-  ORDER BY d.title
+    (location_query IS NULL OR v.county ILIKE '%' || location_query || '%')
+    AND (vendor_category IS NULL OR v.category ILIKE '%' || vendor_category || '%')
+    AND (search_query IS NULL OR 
+         v.supplier ILIKE '%' || search_query || '%' OR
+         v.category ILIKE '%' || search_query || '%')
+  ORDER BY v.supplier
   LIMIT limit_count;
+END;
+$$;
+
+-- 7b. Vector search for vendors (semantic search)
+CREATE OR REPLACE FUNCTION search_vendors_semantic (
+  query_embedding vector(1536),
+  match_threshold float DEFAULT 0.1,
+  match_count int DEFAULT 10,
+  location_filter text DEFAULT NULL,
+  category_filter text DEFAULT NULL
+)
+RETURNS TABLE (
+  id text,
+  supplier text,
+  category text,
+  county text,
+  email text,
+  website text,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    v.id,
+    v.supplier,
+    v.category,
+    v.county,
+    v.email,
+    v.website,
+    1 - (v.embedding <=> query_embedding) as similarity
+  FROM wedding_vendors v
+  WHERE 
+    (1 - (v.embedding <=> query_embedding)) > match_threshold
+    AND (location_filter IS NULL OR v.county ILIKE '%' || location_filter || '%')
+    AND (category_filter IS NULL OR v.category ILIKE '%' || category_filter || '%')
+  ORDER BY v.embedding <=> query_embedding
+  LIMIT match_count;
 END;
 $$;
 

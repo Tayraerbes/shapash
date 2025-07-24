@@ -1187,12 +1187,13 @@ async function handleVendorSearch(
   console.log('🏪 Handling vendor search request:', vendorQuery)
   
   try {
-    // Use the specialized vendor search function
+    // Use the new dedicated wedding vendors search function
     const { data: vendorResults, error: vendorError } = await supabase.rpc(
-      'search_vendors_by_location',
+      'search_wedding_vendors',
       {
         location_query: vendorQuery.extractedLocation,
         vendor_category: vendorQuery.extractedCategory,
+        search_query: null,
         limit_count: 20
       }
     )
@@ -1209,29 +1210,24 @@ async function handleVendorSearch(
       console.log('🔄 No specific matches, trying broader vendor search...')
       
       const { data: broadResults, error: broadError } = await supabase.rpc(
-        'search_vendors_by_location',
+        'search_wedding_vendors',
         {
           location_query: vendorQuery.extractedLocation,
           vendor_category: null, // Remove category filter
+          search_query: vendorQuery.extractedCategory, // Try as general search
           limit_count: 20
         }
       )
 
       if (!broadError && broadResults && broadResults.length > 0) {
-        const filteredBroad = broadResults.filter((vendor: any) => 
-          !vendorQuery.extractedCategory || 
-          vendor.category?.toLowerCase().includes(vendorQuery.extractedCategory) ||
-          vendor.supplier?.toLowerCase().includes(vendorQuery.extractedCategory)
-        )
-        
         return {
-          vendors: filteredBroad.length > 0 ? filteredBroad : broadResults.slice(0, 10),
+          vendors: broadResults.slice(0, 10),
           searchDetails: {
             originalQuery: message,
             location: vendorQuery.extractedLocation,
             category: vendorQuery.extractedCategory,
-            searchType: filteredBroad.length > 0 ? 'broad_filtered' : 'broad_all',
-            resultsFound: filteredBroad.length > 0 ? filteredBroad.length : broadResults.length
+            searchType: 'broad_search',
+            resultsFound: broadResults.length
           }
         }
       }
@@ -1278,12 +1274,11 @@ async function handleAsk(message: string, classification: QueryClassification, s
     let vendorContext = ''
     if (vendorResult.vendors.length > 0) {
       vendorContext = vendorResult.vendors.map((vendor: any, i: number) => 
-        `VENDOR ${i + 1}: ${vendor.supplier || vendor.title}
+        `VENDOR ${i + 1}: ${vendor.supplier}
 Category: ${vendor.category}
-Location: ${vendor.county}
+Location: ${vendor.county || 'Not specified'}
 Email: ${vendor.email || 'Not provided'}
-Website: ${vendor.website || 'Not provided'}
-Details: ${vendor.content || 'Contact for more information'}`
+Website: ${vendor.website || 'Not provided'}`
       ).join('\n\n')
     }
 
@@ -1316,7 +1311,7 @@ User Question: ${message}`
     return {
       directResponse: response,
       sources: vendorResult.vendors.map((vendor: any) => ({
-        title: vendor.supplier || vendor.title,
+        title: vendor.supplier,
         author: 'Wedding Vendor',
         content: `Category: ${vendor.category}, Location: ${vendor.county}, Email: ${vendor.email}, Website: ${vendor.website}`,
         doc_type: 'Wedding Vendor',

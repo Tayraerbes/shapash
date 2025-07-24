@@ -9,12 +9,14 @@ interface CSVVendorRow {
   website?: string
   category?: string
   supplier?: string
+  phone?: string
+  address?: string
   [key: string]: string | undefined // Allow for additional columns
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📊 CSV vendor upload API called')
+    console.log('🏪 CSV wedding vendor upload API called')
     
     // Get server-side Supabase client
     const supabase = createServerSupabaseClient()
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const files = formData.getAll('files') as File[]
 
-    console.log('📊 CSV vendor upload request:', {
+    console.log('🏪 Wedding vendor upload request:', {
       fileCount: files.length,
       fileSizes: files.map(f => `${f.name}: ${(f.size / 1024).toFixed(1)}KB`)
     })
@@ -41,15 +43,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Please provide valid CSV files' }, { status: 400 })
     }
 
-    console.log('📊 Processing wedding vendor CSV files...')
+    console.log('🏪 Processing wedding vendor CSV files...')
 
     let totalVendors = 0
-    let documentsCount = 0
+    let totalProcessed = 0
 
     // Process each CSV file
     for (const file of csvFiles) {
       try {
-        console.log(`📊 Processing CSV file: ${file.name}`)
+        console.log(`🏪 Processing CSV file: ${file.name}`)
         
         // Read file content
         const fileContent = await file.text()
@@ -90,76 +92,43 @@ export async function POST(request: NextRequest) {
           const batchPromises = batchVendors.map(async (vendor, batchIndex) => {
             const vendorIndex = i + batchIndex
             try {
-              // Create meaningful title from vendor data
-              const vendorName = vendor.supplier || vendor.category || `Vendor ${vendorIndex + 1}`
-              const location = vendor.county ? ` in ${vendor.county}` : ''
-              const title = `${vendorName}${location}`.trim()
+              // Skip rows with no supplier or category
+              if (!vendor.supplier || !vendor.category) {
+                console.warn(`⚠️ Skipping vendor ${vendorIndex}: missing supplier or category`)
+                return false
+              }
 
-              // Create searchable content from vendor information
-              const vendorContent = [
-                vendor.supplier && `Business: ${vendor.supplier}`,
-                vendor.category && `Category: ${vendor.category}`,
-                vendor.county && `Location: ${vendor.county}`,
-                vendor.website && `Website: ${vendor.website}`,
-                vendor.email && `Contact: ${vendor.email}`,
-                // Include any additional columns
-                ...Object.entries(vendor)
-                  .filter(([key, value]) => 
-                    !['supplier', 'category', 'county', 'website', 'email'].includes(key) && 
-                    value && 
-                    value.toString().trim()
-                  )
-                  .map(([key, value]) => `${key}: ${value}`)
-              ].filter(Boolean).join('\n')
-
-              // Create context-enhanced text for wedding vendor embedding
+              // Create context-enhanced text for embedding
               const contextEnhancedText = `
-Wedding Vendor: ${title}
-Business Type: ${vendor.category || 'Wedding Service'}
+Wedding Vendor: ${vendor.supplier}
+Category: ${vendor.category}
 Location: ${vendor.county || 'Available'}
-Business Name: ${vendor.supplier || 'Wedding Vendor'}
-Contact Information: ${vendor.email || 'Contact Available'}
-Details: ${vendorContent}
+Email: ${vendor.email || 'Available on request'}
+Website: ${vendor.website || 'Contact for details'}
               `.trim()
               
               const embedding = await generateEmbedding(contextEnhancedText)
 
+              // Insert into simple wedding_vendors table
               const { error: vendorError } = await supabase
-                .from('documents_enhanced')
+                .from('wedding_vendors')
                 .insert({
-                  content: vendorContent,
-                  metadata: {
-                    ...vendor,
-                    row_index: vendorIndex,
-                    source_file: file.name,
-                    csv_processed: true,
-                    vendor_type: vendor.category || 'wedding_service'
-                  },
+                  supplier: vendor.supplier,
+                  category: vendor.category,
+                  county: vendor.county || null,
+                  email: vendor.email || null,
+                  website: vendor.website || null,
                   embedding: embedding,
-                  title: title,
-                  author: vendor.supplier || 'Wedding Vendor',
-                  doc_type: 'Wedding Vendor',
-                  genre: 'Wedding Planning',
-                  topic: vendor.category || 'Wedding Services',
-                  difficulty: 'General',
-                  tags: [
-                    vendor.category,
-                    vendor.county,
-                    'wedding vendor',
-                    'wedding services'
-                  ].filter(Boolean).join(', '),
-                  source_type: 'csv_vendors', // This matches our database schema
-                  summary: `${vendor.category || 'Wedding service'} provider${vendor.county ? ` in ${vendor.county}` : ''}`,
-                  chunk_id: vendorIndex + 1,
-                  total_chunks: vendors.length,
-                  source: file.name,
-                  category: vendor.category || 'Wedding Services'
+                  source_file: file.name,
+                  row_index: vendorIndex
                 })
 
               if (vendorError) {
                 console.error(`❌ Error storing vendor ${vendorIndex}:`, vendorError)
                 return false
               }
+
+              console.log(`✅ Stored vendor: ${vendor.supplier} (${vendor.category} in ${vendor.county})`)
               return true
             } catch (error) {
               console.error(`❌ Error processing vendor ${vendorIndex}:`, error)
@@ -171,71 +140,38 @@ Details: ${vendorContent}
           fileVendorsStored += batchResults.filter(Boolean).length
         }
 
-        // Store main CSV document record
-        try {
-          const documentId = `csv_vendors_${Date.now()}_${Math.random().toString(36).substring(2)}`
-          
-          const { error: docError } = await supabase
-            .from('documents_enhanced')
-            .insert({
-              id: documentId,
-              title: `Wedding Vendors from ${file.name}`,
-              author: 'Vendor Directory',
-              doc_type: 'Vendor Directory',
-              genre: 'Wedding Planning',
-              content: `Wedding vendor directory with ${vendors.length} vendors`,
-              metadata: {
-                is_parent_document: true,
-                vendor_count: vendors.length,
-                source_file: file.name,
-                csv_columns: Object.keys(vendors[0] || {}),
-                processing_date: new Date().toISOString()
-              },
-              source_type: 'csv_vendors',
-              summary: `Directory of ${vendors.length} wedding vendors from ${file.name}`,
-              chunk_id: 0,
-              total_chunks: vendors.length,
-              source: `${file.name} (Wedding Vendor Directory)`,
-              category: 'Vendor Directory',
-              tags: 'wedding vendors, directory, suppliers'
-            })
-
-          if (docError) {
-            console.error('❌ Error storing main CSV document record:', docError)
-          }
-        } catch (error) {
-          console.error('❌ Failed to store main CSV document record:', error)
-        }
-
+        console.log(`✅ Successfully stored ${fileVendorsStored} vendors from ${file.name}`)
         totalVendors += fileVendorsStored
-        documentsCount++
-        console.log(`✅ Successfully processed ${file.name}: ${fileVendorsStored} vendors stored`)
-        
+        totalProcessed += vendors.length
+
       } catch (fileError) {
-        console.error(`❌ Error processing CSV file ${file.name}:`, fileError)
-        return NextResponse.json({ 
-          error: `Failed to process CSV file ${file.name}: ${fileError instanceof Error ? fileError.message : 'Unknown error'}` 
-        }, { status: 400 })
+        console.error(`❌ Error processing file ${file.name}:`, fileError)
+        return NextResponse.json({
+          error: `Failed to process ${file.name}: ${fileError instanceof Error ? fileError.message : 'Unknown error'}`
+        }, { status: 500 })
       }
     }
 
+    console.log(`🎉 Wedding vendor upload completed!`)
+    console.log(`📊 Total processed: ${totalProcessed}, Successfully stored: ${totalVendors}`)
+
     return NextResponse.json({
       success: true,
-      documentsCount,
-      vendorsCount: totalVendors,
-      message: `Successfully processed ${documentsCount} CSV file(s) with ${totalVendors} wedding vendors`,
-      processingInfo: {
-        contentType: 'csv_vendors',
-        totalFiles: csvFiles.length,
-        successfulFiles: documentsCount,
-        vendorsProcessed: totalVendors
+      message: `Successfully uploaded ${totalVendors} wedding vendors`,
+      details: {
+        totalProcessed,
+        totalStored: totalVendors,
+        filesProcessed: csvFiles.length
       }
     })
 
   } catch (error) {
-    console.error('❌ Error in CSV vendor upload API:', error)
+    console.error('❌ Error in wedding vendor upload API:', error)
     return NextResponse.json(
-      { error: 'Internal server error: ' + (error instanceof Error ? error.message : 'Unknown error') },
+      { 
+        error: 'Wedding vendor upload failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
