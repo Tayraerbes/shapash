@@ -12,7 +12,7 @@ import { CSVVendorUpload } from './CSVVendorUpload'
 type TabType = 'basic' | 'chunked' | 'server' | 'client' | 'youtube' | 'wedding' | 'vendors'
 
 export default function UploadTabs() {
-  const [activeTab, setActiveTab] = useState<TabType>('wedding')
+  const [activeTab, setActiveTab] = useState<TabType>('vendors')
 
   const tabs = [
     {
